@@ -17,6 +17,7 @@ export class FormulaEvaluator {
   constructor(memory: SheetMemory) {
     this._sheetMemory = memory;
   }
+  
 
   /**
     * place holder for the evaluator.   I am not sure what the type of the formula is yet 
@@ -43,45 +44,165 @@ export class FormulaEvaluator {
     * 
    */
 
-  evaluate(formula: FormulaType) {
-
-
-    // set the this._result to the length of the formula
-
-    this._result = formula.length;
-    this._errorMessage = "";
-
-    switch (formula.length) {
-      case 0:
-        this._errorMessage = ErrorMessages.emptyFormula;
-        break;
-      case 7:
-        this._errorMessage = ErrorMessages.partial;
-        break;
-      case 8:
-        this._errorMessage = ErrorMessages.divideByZero;
-        break;
-      case 9:
-        this._errorMessage = ErrorMessages.invalidCell;
-        break;
-      case 10:
-        this._errorMessage = ErrorMessages.invalidFormula;
-        break;
-      case 11:
-        this._errorMessage = ErrorMessages.invalidNumber;
-        break;
-      case 12:
-        this._errorMessage = ErrorMessages.invalidOperator;
-        break;
-      case 13:
-        this._errorMessage = ErrorMessages.missingParentheses;
-        break;
+  // helper function to get the precedence of an operator
+  private getOperatorPrecedence(operator: string): number | null {
+    switch (operator) {
+      case "+":
+      case "-":
+        return 1;
+      case "*":
+      case "/":
+        return 2;
       default:
-        this._errorMessage = "";
-        break;
+        return null;
     }
   }
 
+// Defining the evaluate function
+evaluate(formula: FormulaType) {
+
+  // clear the error message
+  this._errorMessage = ErrorMessages.emptyFormula;
+  this._result = 0;
+  if (formula.length === 0) {return;}
+
+  // create 2 stacks, one for storing numbers and one for storing operators
+  this._errorMessage = "";
+  const numStack: number[] = []; 
+  const opStack: string[] = []; 
+
+  // return "ERR" if the formula is empty
+  if (formula.length === 2 && this.isNumber(formula[0]) && this.isOperator(formula[1])) {
+    this._errorOccured = true;
+    this._errorMessage = ErrorMessages.invalidFormula;
+    this._result = Number(formula[0]);
+    return;
+  }else if (formula.length === 2 && this.isNumber(formula[0]) && formula[1] === "(") {
+    this._errorOccured = true;
+    this._errorMessage = ErrorMessages.invalidFormula;
+    this._result = Number(formula[0]); 
+    return;
+  }else if (formula.length % 2 === 0 && this.isOperator(formula[formula.length - 1])) {
+    formula.pop(); 
+    this._errorMessage = ErrorMessages.invalidFormula;
+  }else if (formula.length > 2 && this.isOperator(formula[formula.length - 1])) {
+    this._errorOccured = true;
+    this._errorMessage = ErrorMessages.invalidFormula;
+    this._result = Number(formula[0]);
+    return;}
+  
+
+
+  // iterate through the formula from left to right
+  for (const token of formula) {
+    // push the token to the number stack if it is a number
+    if (this.isNumber(token)) {
+      numStack.push(Number(token));
+    }
+    // if the token is a cell reference, get the cell value and push it to the number stack
+    else if (this.isCellReference(token)) {
+      const [value, error] = this.getCellValue(token);
+      if (error === "") {
+        numStack.push(value);
+      } else {
+  
+        this._errorOccured = true;
+        this._errorMessage = error;
+        this._result = 0;
+        return;
+      }
+    }
+    
+    else if (token === "(") {
+      opStack.push(token);
+    }
+    // if the token is a right parenthesis, pop the operator stack until the left parenthesis is found
+    else if (token === ")") {
+      while (opStack.length > 0 && opStack[opStack.length - 1] !== "(") {
+        this.applyOperator(numStack, opStack);
+      }
+      if (opStack.length > 0 && opStack[opStack.length - 1] === "(") {
+        opStack.pop(); 
+      } else {
+        // if the left parenthesis is not found, set the error message and return
+        this._errorOccured = true;
+        this._errorMessage = ErrorMessages.missingParentheses;
+        this._result = 0;
+        return;
+      }
+    }
+    // if the token is an operator and the operator stack is empty, push the token to the operator stack
+    else if (this.isOperator(token)) {
+      while (
+        opStack.length > 0 &&
+    (this.getOperatorPrecedence(opStack[opStack.length - 1]) ?? 0) >=
+    (this.getOperatorPrecedence(token) ?? 0)
+      ) {
+        this.applyOperator(numStack, opStack); 
+      }
+      opStack.push(token);
+    }
+  }
+
+  // after iterating through the formula, pop the remaining operators from the operator stack and apply them to the number stack
+  while (opStack.length > 0) {
+    if (opStack[opStack.length - 1] === "(" || opStack[opStack.length - 1] === ")") {
+      // if the operator stack contains a parenthesis, set the error message and return
+      this._errorOccured = true;
+      this._errorMessage = ErrorMessages.missingParentheses;
+      this._result = 0;
+      return;
+    }
+    this.applyOperator(numStack, opStack);
+  }
+
+  // if the number stack contains only one number, set the result to that number
+  if (numStack.length === 1) {
+    this._result = numStack.pop() || 0;
+  } else {
+    // if the number stack contains more than one number, set the error message and return
+    this._errorOccured = true;
+    this._errorMessage = ErrorMessages.invalidFormula;
+    this._result = 0;
+  }
+}
+
+// helper function determine if a token is an operator
+private isOperator(token: string): boolean {
+  return token === "+" || token === "-" || token === "*" || token === "/";
+}
+
+// helper function to apply an operator to the number stack
+private applyOperator(numStack: number[], opStack: string[]): void {
+  const operator = opStack.pop(); 
+  if (operator) {
+    const right = numStack.pop() || 0; 
+    const left = numStack.pop() || 0;
+    switch (operator) {
+      case "+":
+        numStack.push(left + right);
+        break;
+      case "-":
+        numStack.push(left - right);
+        break;
+      case "*":
+        numStack.push(left * right);
+        break;
+      case "/":
+        if (right === 0) {
+        
+          this._errorOccured = true;
+          this._errorMessage = ErrorMessages.divideByZero;
+          numStack.push(Infinity);
+        } else {
+          numStack.push(left / right);
+        }
+        break;
+    }
+  }
+  
+}
+  
   public get error(): string {
     return this._errorMessage
   }
