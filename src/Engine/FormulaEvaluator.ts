@@ -44,7 +44,10 @@ export class FormulaEvaluator {
     * 
    */
 
-  // helper function to get the precedence of an operator
+    /**
+   *  This function will return the precedence of the operator
+   * @param operator
+   */
   private getOperatorPrecedence(operator: string): number | null {
     switch (operator) {
       case "+":
@@ -58,7 +61,10 @@ export class FormulaEvaluator {
     }
   }
 
-// Defining the evaluate function
+  /**
+   *  This function evaluates the formula and sets the result and error message
+   * @param formula
+   */
 evaluate(formula: FormulaType) {
 
   // clear the error message
@@ -167,12 +173,18 @@ evaluate(formula: FormulaType) {
   }
 }
 
-// helper function determine if a token is an operator
+  /**
+   *  This function returns true if the token is an operator
+   * @param token
+   */
 private isOperator(token: string): boolean {
   return token === "+" || token === "-" || token === "*" || token === "/";
 }
 
-// helper function to apply an operator to the number stack
+  /**
+   *  This function applies the operator to the top two numbers in the number stack
+   * @param numStack
+   */
 private applyOperator(numStack: number[], opStack: string[]): void {
   const operator = opStack.pop(); 
   if (operator) {
@@ -180,6 +192,7 @@ private applyOperator(numStack: number[], opStack: string[]): void {
     const left = numStack.pop() || 0;
     switch (operator) {
       case "+":
+        
         numStack.push(left + right);
         break;
       case "-":
