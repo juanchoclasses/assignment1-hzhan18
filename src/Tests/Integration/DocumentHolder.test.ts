@@ -299,7 +299,7 @@ describe('DocumentHolder', () => {
                 // get the formula from the cell
                 const formula = cell.formula;
                 // the formula should be ["A2"] and the error "#REF!"
-                expect(formula).toEqual(["A2", "+"]);
+                expect(formula).toEqual(["A2"]);
 
                 const documentJSON2 = documentHolder.clearFormula(sheetTestName, userName);
 

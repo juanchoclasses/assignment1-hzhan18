@@ -83,7 +83,14 @@ evaluate(formula: FormulaType) {
     this._errorMessage = ErrorMessages.invalidFormula;
     this._result = Number(formula[0]);
     return;
-  }else if (formula.length === 2 && this.isNumber(formula[0]) && formula[1] === "(") {
+  }else if (formula[0] === ")" && this.isOperator(formula[1])) {
+    // Handle the situation, e.g., set an error message or take appropriate action
+    this._errorOccured = true;
+    this._errorMessage = ErrorMessages.invalidFormula;
+    this._result = 0;
+    return;
+  } 
+  else if (formula.length === 2 && this.isNumber(formula[0]) && formula[1] === "(") {
     this._errorOccured = true;
     this._errorMessage = ErrorMessages.invalidFormula;
     this._result = Number(formula[0]); 
